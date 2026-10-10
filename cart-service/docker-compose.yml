@@ -1,0 +1,39 @@
+services:
+  cart-service:
+    build:
+      context: .
+    env_file:
+      - .env
+    environment:
+      APP_ENV: local
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: pgsql
+      DB_HOST: cart-db
+      DB_PORT: 5432
+      DB_DATABASE: cartdb
+      DB_USERNAME: appuser
+      DB_PASSWORD: ${DB_PASSWORD:-apppassword}
+    ports:
+      - "3001:3001"
+    depends_on:
+      cart-db:
+        condition: service_healthy
+
+  cart-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cartdb
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-apppassword}
+    ports:
+      - "5432:5432"
+    volumes:
+      - cart-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d cartdb"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+volumes:
+  cart-db-data:
