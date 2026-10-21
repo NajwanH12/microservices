@@ -31,6 +31,46 @@ services:
       start_period: 30s
       timeout: 5s
 
+  review-service:
+    build:
+      context: ./review-service
+    ports:
+      - "3002:3002"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3002
+      FLASK_DEBUG: 0
+      MONGO_URI: mongodb://appuser:apppassword@review-db:27017/?authSource=admin
+      MONGO_DB_NAME: reviewdb
+      PRODUCT_SERVICE_URL: http://product-service:3000
+    depends_on:
+      product-service:
+        condition: service_started
+      review-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3002/health', timeout=3)"]
+      interval: 10s
+      retries: 5
+      start_period: 10s
+      timeout: 5s
+
+  review-db:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: appuser
+      MONGO_INITDB_ROOT_PASSWORD: apppassword
+    ports:
+      - "27017:27017"
+    volumes:
+      - review-db-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--username", "appuser", "--password", "apppassword", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      retries: 5
+      start_period: 20s
+      timeout: 5s
 
 volumes:
   product-db-data:
+  review-db-data:
