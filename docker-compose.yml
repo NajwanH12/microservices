@@ -3,7 +3,7 @@ services:
     build:
       context: ./product_service
     ports:
-      - "3000:3000"
+      - "${PRODUCT_SERVICE_HOST_PORT:-3000}:3000"
     environment:
       DB_HOST: product-db
       DB_USER: appuser
@@ -26,6 +26,103 @@ services:
       - ./product_service/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--user=root", "--password=rootpassword"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 5s
+
+  cart-service:
+    build:
+      context: ./cart-service
+    ports:
+      - "${CART_SERVICE_HOST_PORT:-3001}:3001"
+    environment:
+      APP_ENV: local
+      APP_KEY: ${CART_APP_KEY:-}
+      APP_DEBUG: ${CART_APP_DEBUG:-false}
+      APP_URL: http://localhost:3001
+      LOG_CHANNEL: stderr
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      DB_CONNECTION: pgsql
+      DB_HOST: cart-db
+      DB_PORT: 5432
+      DB_DATABASE: cartdb
+      DB_USERNAME: appuser
+      DB_PASSWORD: ${CART_DB_PASSWORD:-apppassword}
+      PRODUCT_SERVICE_URL: http://product-service:3000
+    depends_on:
+      cart-db:
+        condition: service_healthy
+      product-service:
+        condition: service_started
+
+  cart-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cartdb
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: ${CART_DB_PASSWORD:-apppassword}
+    ports:
+      - "${CART_DB_HOST_PORT:-5432}:5432"
+    volumes:
+      - cart-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d cartdb"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+  order-service:
+    build:
+      context: ./order-service
+    ports:
+      - "${ORDER_SERVICE_HOST_PORT:-3003}:3003"
+    environment:
+      APP_ENV: local
+      APP_KEY: ${ORDER_APP_KEY:-}
+      APP_DEBUG: ${ORDER_APP_DEBUG:-false}
+      APP_URL: http://localhost:${ORDER_SERVICE_HOST_PORT:-3003}
+      LOG_CHANNEL: stderr
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      DB_CONNECTION: mysql
+      DB_HOST: order-db
+      DB_PORT: 3306
+      DB_DATABASE: orderdb
+      DB_USERNAME: appuser
+      DB_PASSWORD: ${ORDER_DB_PASSWORD:-apppassword}
+      CART_SERVICE_URL: http://cart-service:3001
+      PRODUCT_SERVICE_URL: http://product-service:3000
+    depends_on:
+      order-db:
+        condition: service_healthy
+      cart-service:
+        condition: service_started
+      product-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1:3003/health\") === false ? 1 : 0);'"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 5s
+
+  order-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: orderdb
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: ${ORDER_DB_PASSWORD:-apppassword}
+      MYSQL_ROOT_PASSWORD: ${ORDER_DB_ROOT_PASSWORD:-rootpassword}
+    ports:
+      - "${ORDER_DB_HOST_PORT:-3307}:3306"
+    volumes:
+      - order-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --host=127.0.0.1 --protocol=tcp --user=root --password=\"$${MYSQL_ROOT_PASSWORD}\""]
       interval: 10s
       retries: 5
       start_period: 30s
@@ -73,4 +170,6 @@ services:
 
 volumes:
   product-db-data:
+  cart-db-data:
+  order-db-data:
   review-db-data:

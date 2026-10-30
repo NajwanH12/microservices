@@ -3,11 +3,16 @@
 namespace App\Services;
 
 use App\Exceptions\CartItemNotFoundException;
+use App\Exceptions\ProductNotFoundException;
 use App\Models\CartItem;
 use Illuminate\Database\Eloquent\Collection;
 
 class CartService
 {
+    public function __construct(private ProductService $productService)
+    {
+    }
+
     public function getAllCarts(): Collection
     {
         return CartItem::query()->latest()->get();
@@ -26,13 +31,12 @@ class CartService
 
     public function addItem(int $userId, int $productId, int $quantity): CartItem
     {
-        $item = CartItem::firstOrNew([
-            'user_id' => $userId,
-            'product_id' => $productId,
-        ]);
+        if (! $this->productService->getProduct($productId)) {
+            throw new ProductNotFoundException($productId);
+        }
 
+        $item = CartItem::firstOrNew(['user_id' => $userId, 'product_id' => $productId]);
         $item->quantity = ($item->exists ? $item->quantity : 0) + $quantity;
-
         $item->save();
 
         return $item;
