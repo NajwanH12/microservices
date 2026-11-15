@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Exceptions\ProductServiceUnavailableException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -18,7 +20,26 @@ class ProductService
                 return $response->json()['data'];
             }
 
+            if ($response->serverError()) {
+                throw new ProductServiceUnavailableException(
+                    'Product service tidak dapat dihubungi, coba lagi nanti'
+                );
+            }
+
             return null;
+        } catch (ProductServiceUnavailableException $e) {
+            throw $e;
+        } catch (ConnectionException $e) {
+            Log::error('Product service tidak dapat dihubungi', [
+                'product_id' => $productId,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw new ProductServiceUnavailableException(
+                'Product service tidak dapat dihubungi, coba lagi nanti',
+                0,
+                $e
+            );
         } catch (Throwable $e) {
             Log::error('Gagal mengambil data product', [
                 'product_id' => $productId,
