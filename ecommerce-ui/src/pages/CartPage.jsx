@@ -1,7 +1,8 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { getCartDetail } from '../api/aggregate'
 import { clearCart, removeCartItem, updateCartItem } from '../api/cartApi'
 import AsyncView from '../components/AsyncView'
+import ProductImage from '../components/ProductImage'
 import { useAsync } from '../hooks/useAsync'
 import { describeError, formatRupiah } from '../utils/format'
 
@@ -36,7 +37,7 @@ export default function CartPage({ userId }) {
               <tbody>
                 {data.items.map((item) => (
                   <tr key={item.id}>
-                    <td>{item.product ? item.product.name : <em>Produk tidak tersedia</em>}</td>
+                    <td className="cart-product-cell">{item.product ? (<><ProductImage image={item.product.image} alt={item.product.name} className="cart-product-image" /><span>{item.product.name}</span></>) : <em>Produk tidak tersedia</em>}</td>
                     <td>{item.product ? formatRupiah(item.product.price) : '-'}</td>
                     <td>
                       <button
@@ -78,3 +79,4 @@ export default function CartPage({ userId }) {
     </section>
   )
 }
+

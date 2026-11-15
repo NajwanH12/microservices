@@ -1,10 +1,11 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getProductDetail } from '../api/aggregate'
 import { addToCart } from '../api/cartApi'
 import AsyncView from '../components/AsyncView'
 import ReviewForm from '../components/ReviewForm'
 import StarRating from '../components/StarRating'
+import ProductImage from '../components/ProductImage'
 import { useAsync } from '../hooks/useAsync'
 import { describeError, formatRupiah } from '../utils/format'
 
@@ -31,6 +32,7 @@ export default function ProductDetailPage({ userId }) {
         {data && (
           <>
             <h1>{data.product.name}</h1>
+            <ProductImage image={data.product.image} alt={data.product.name} className="product-detail-image" />
             <p>{data.product.description}</p>
             <p className="price">{formatRupiah(data.product.price)}</p>
             <p className="muted">Stok: {data.product.stock}</p>
@@ -80,3 +82,5 @@ export default function ProductDetailPage({ userId }) {
     </section>
   )
 }
+
+
